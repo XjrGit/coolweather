@@ -1,7 +1,11 @@
 package cn.lygtc.coolweather;
 
+        import android.app.AlertDialog;
         import android.app.ProgressDialog;
+        import android.content.Context;
+        import android.content.DialogInterface;
         import android.content.Intent;
+        import android.content.SharedPreferences;
         import android.os.Bundle;
         import android.support.v4.app.Fragment;
         import android.util.Log;
@@ -41,47 +45,29 @@ public class ChooseAreaFragment extends Fragment {
 
     public static final int LEVEL_COUNTY = 2;
 
+
     private ProgressDialog progressDialog;
-
     private TextView titleText;
-
     private Button backButton;
-
     private ListView listView;
-
     private ArrayAdapter<String> adapter;
-
     private List<String> dataList = new ArrayList<>();
-
-    /**
-     * 省列表
-     */
+    /*** 省列表*/
     private List<Province> provinceList;
-
-    /**
-     * 市列表
-     */
+    /*** 市列表*/
     private List<City> cityList;
-
-    /**
-     * 县列表
-     */
+    /*** 县列表*/
     private List<County> countyList;
+    /*** 选中的省份*/
 
-    /**
-     * 选中的省份
-     */
     private Province selectedProvince;
-
-    /**
-     * 选中的城市
-     */
+    /*** 选中的城市*/
     private City selectedCity;
-
-    /**
-     * 当前选中的级别
-     */
+    /*** 当前选中的级别*/
     private int currentLevel;
+
+    private String preferenceName = "weathercity";
+    private SharedPreferences preferences;
 
 
     @Override
@@ -99,29 +85,43 @@ public class ChooseAreaFragment extends Fragment {
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
+        preferences = getActivity().getSharedPreferences(preferenceName, Context.MODE_PRIVATE);
+
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if (currentLevel == LEVEL_PROVINCE) {
                     selectedProvince = provinceList.get(position);
                     queryCities();
-                }// else if (currentLevel == LEVEL_CITY) {
-                   // selectedCity = cityList.get(position);
-                   // queryCounties();
-               // }// else if (currentLevel == LEVEL_COUNTY) {
-                   // String weatherId = countyList.get(position).getWeatherId();
-                  //  if (getActivity() instanceof MainActivity) {
-                       // Intent intent = new Intent(getActivity(), WeatherActivity.class);
-                       // intent.putExtra("weather_id", weatherId);
-                      //  startActivity(intent);
-                        getActivity().finish();
-                   // }// else if (getActivity() instanceof WeatherActivity) {
-                       // WeatherActivity activity = (WeatherActivity) getActivity();
-                      //  activity.drawerLayout.closeDrawers();
-                       // activity.swipeRefresh.setRefreshing(true);
-                      //  activity.requestWeather(weatherId);
-                   // }
-               // }
+                } else if (currentLevel == LEVEL_CITY) {
+                    selectedCity = cityList.get(position);
+                    queryCounties();
+                } else if (currentLevel == LEVEL_COUNTY) {
+                }
+            }
+        });
+        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> adapterView, View view, int position, long l) {
+                if (currentLevel == LEVEL_COUNTY) {
+                    final County county = countyList.get(position);
+                    AlertDialog dialog = new AlertDialog.Builder(getContext())
+                            .setTitle("确认")
+                            .setMessage("确定要将该地添加为关注城市吗？")
+                            .setPositiveButton("关注", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    SharedPreferences.Editor editor = preferences.edit();
+                                    int size = preferences.getAll().size();
+                                    editor.putString("city" + size, county.getCountryName() + "," + county.getWeatherId());
+                                    editor.commit();
+                                }
+                            })
+                            .setNegativeButton("放弃", null)
+                            .create();
+                    dialog.show();
+                }
+                return true;
             }
         });
         backButton.setOnClickListener(new View.OnClickListener() {
@@ -137,9 +137,7 @@ public class ChooseAreaFragment extends Fragment {
         queryProvinces();
     }
 
-    /**
-     * 查询全国所有的省，优先从数据库查询，如果没有查询到再去服务器上查询。
-     */
+    /*** 查询全国所有的省，优先从数据库查询，如果没有查询到再去服务器上查询。*/
     private void queryProvinces() {
         titleText.setText("中国");
         backButton.setVisibility(View.GONE);
